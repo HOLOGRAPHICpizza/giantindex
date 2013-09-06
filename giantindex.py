@@ -27,6 +27,14 @@ class DatabaseConnection:
 		for the document at the given path,
 		return a document id.
 		"""
+		c = self._db.cursor()
+
+		c.execute("""INSERT INTO documents
+				(id, path, modified, duration, width, height, size)
+				VALUES (NULL, %s, %s, %s, %s, %s, %s)""",
+				(path, modified, duration, width, height, size))
+
+		c.close()
 		return -1
 
 	def updateAttributes(self, documentID):
