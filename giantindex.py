@@ -4,6 +4,7 @@
 import os
 import sys
 import MySQLdb
+import ConfigParser
 
 class DatabaseConnection:
 	def __init__(self, host, user, passwd, db):
@@ -61,29 +62,26 @@ def scanNewFiles(root, db):
 				db.updateAttributes(doc)
 				print(os.path.join(directory, f))
 
-if __name__ == '__main__':
-	root = os.getcwd()
-	
-	if len(sys.argv) > 1:
-		root = sys.argv[1]
-	
-	if not os.access(root, os.R_OK):
-		print('Can not read the directory %s!', root)
-		sys.exit(1)
-	
-	#scanNewFiles(root)
-	db = DatabaseConnection('localhost', 'giantindex', 'burrtango', 'giantindex')
-	db.addDocument('sdfsfdf')
-	
+def getSettings():
+	"""
+	Return the multiple string values of: hostname, username, password, database
+	from loading a settings file,
+	or exit the program if none is found.
+	"""
+	#TODO: Prompt the user? Cmd-line args?
+
 	# Locate configuration file
 	cfgFile = None
 	cfg_name = 'giantindex.cfg'
 	if os.access(cfg_name, os.R_OK):
 		cfgFile = cfg_name
-	elif os.access(os.path.join('~/', cfg_name), os.R_OK):
-		cfgFile = os.path.join('~/', cfg_name)
+	elif os.access(os.path.expanduser('~/.' + cfg_name), os.R_OK):
+		cfgFile = os.path.expanduser('~/.' + cfg_name)
 	elif os.access(os.path.join('/etc/', cfg_name), os.R_OK):
 		cfgFile = os.path.join('/etc/', cfg_name)
+	else:
+		print('Could not load ./giantindex.cfg, ~/.giantindex.cfg, or /etc/giantindex.cfg')
+		sys.exit(1)
 	
 	config = ConfigParser.RawConfigParser()
 	config.read(cfgFile)
@@ -92,5 +90,18 @@ if __name__ == '__main__':
 	user = config.get('database', 'user')
 	passwd = config.get('database', 'passwd')
 	dbName = config.get('database', 'db')
+
+	return host, user, passwd, dbName
+
+if __name__ == '__main__':
+
+	host, user, passwd, dbName = getSettings()
+	
+	print(host, user, passwd, dbName)
+
+	#db = DatabaseConnection('localhost', 'giantindex', 'burrtango', 'giantindex')
+	#db.addDocument('sdfsfdf')
+	
+	
 
 
