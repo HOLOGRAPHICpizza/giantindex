@@ -12,7 +12,15 @@ class DatabaseConnection:
 		self._db = MySQLdb.connect(
 				host=host, user=user, passwd=passwd, db=db)
 		#TODO: The connection should be closed.
+	
+	def __enter__(self):
+		return self
 
+	def __exit__(self):
+		self._db.close()
+		#TODO: see if that function exists
+	
+	#TODO: consider 'with' syntax for cursor
 	def pathIsIndexed(self, path):
 		"""Return true if the path is in the database, false otherwise."""
 		c = self._db.cursor()
@@ -145,9 +153,8 @@ if __name__ == '__main__':
 	
 	cfg = getSettings()
 	
-	db = DatabaseConnection(cfg['host'], cfg['user'], cfg['passwd'], cfg['db'])
-	
-	db.updateAttributes(1)
-	print(db.pathIsIndexed('ds'))
+	with DatabaseConnection(cfg['host'], cfg['user'], cfg['passwd'], cfg['db']) as db:
+		db.updateAttributes(1)
+		print(db.pathIsIndexed('ds'))
 
 
