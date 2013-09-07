@@ -64,7 +64,7 @@ def scanNewFiles(root, db):
 
 def getSettings():
 	"""
-	Return the multiple string values of: hostname, username, password, database
+	Return a dict of settings and their values
 	from loading a settings file,
 	or exit the program if none is found.
 	"""
@@ -85,20 +85,22 @@ def getSettings():
 	
 	config = ConfigParser.RawConfigParser()
 	config.read(cfgFile)
+	
+	settings = {}
 
-	host = config.get('database', 'host')
-	user = config.get('database', 'user')
-	passwd = config.get('database', 'passwd')
-	dbName = config.get('database', 'db')
-
-	return host, user, passwd, dbName
+	for key in ('host', 'user', 'passwd', 'db'):
+		settings[key] = config.get('database', key)
+	for key in ('include', 'exclude'):
+		settings[key] = config.get('indexer', key)
+	
+	return settings
 
 if __name__ == '__main__':
-
-	host, user, passwd, dbName = getSettings()
 	
-	db = DatabaseConnection(host, user, passwd, dbName)
+	cfg = getSettings()
 	
-	print(db.addDocument('XXXXXXXXXXXXX'))
+	db = DatabaseConnection(cfg['host'], cfg['user'], cfg['passwd'], cfg['db'])
+	
+	print(db.pathIsIndexed('ds'))
 
 
