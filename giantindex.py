@@ -4,10 +4,11 @@
 import os
 import sys
 import time
+import contextlib
 import MySQLdb
 import ConfigParser
 
-class DatabaseConnection:
+class DatabaseConnection(object):
 	def __init__(self, host, user, passwd, db):
 		self._db = MySQLdb.connect(
 				host=host, user=user, passwd=passwd, db=db)
@@ -16,20 +17,22 @@ class DatabaseConnection:
 	def __enter__(self):
 		return self
 
-	def __exit__(self):
+	def __exit__(self, exc_type, exc_val, exc_tb):
+		self.close()
+	
+	def close(self):
+		"""Close the database connection."""
 		self._db.close()
-		#TODO: see if that function exists
 	
 	#TODO: consider 'with' syntax for cursor
 	def pathIsIndexed(self, path):
 		"""Return true if the path is in the database, false otherwise."""
-		c = self._db.cursor()
 		
-		c.execute('SELECT id FROM documents WHERE path = %s', (path,))
+		ret = True
+		with contextlib.closing(self._db.cursor()) as c:
+			c.execute('SELECT id FROM documents WHERE path = %s', (path,))
+			ret = c.fetchone() != None
 
-		ret = c.fetchone() != None
-
-		c.close()
 		return ret
 
 	def getDocumentPath(self, docID):
@@ -154,7 +157,7 @@ if __name__ == '__main__':
 	cfg = getSettings()
 	
 	with DatabaseConnection(cfg['host'], cfg['user'], cfg['passwd'], cfg['db']) as db:
-		db.updateAttributes(1)
-		print(db.pathIsIndexed('ds'))
+		print(db.pathIsIndexed('/home/pghjgublic/test.txt'))
+		#db.updateAttributes(1)
 
 
