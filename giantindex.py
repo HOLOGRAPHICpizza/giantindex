@@ -10,6 +10,7 @@ class DatabaseConnection:
 	def __init__(self, host, user, passwd, db):
 		self._db = MySQLdb.connect(
 				host=host, user=user, passwd=passwd, db=db)
+		#TODO: The connection should be closed.
 
 	def pathIsIndexed(self, path):
 		"""Return true if the path is in the database, false otherwise."""
@@ -32,10 +33,7 @@ class DatabaseConnection:
 
 		c.execute('INSERT INTO documents (id, path, modified, duration, width, height, size) VALUES (NULL, %s, CURRENT_TIMESTAMP, NULL, NULL, NULL, 0)', (path,))
 		
-		c.commit()
-
-		print(c)
-		print(c.fetchall())
+		self._db.commit()
 
 		c.close()
 		return -1
@@ -97,11 +95,7 @@ if __name__ == '__main__':
 
 	host, user, passwd, dbName = getSettings()
 	
-	print(host, user, passwd, dbName)
-
-	#db = DatabaseConnection('localhost', 'giantindex', 'burrtango', 'giantindex')
-	#db.addDocument('sdfsfdf')
+	db = DatabaseConnection(host, user, passwd, dbName)
 	
-	
-
+	db.addDocument('ZINGABABABABAOOO')
 
