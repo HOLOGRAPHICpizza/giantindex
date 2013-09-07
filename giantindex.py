@@ -3,6 +3,7 @@
 
 import os
 import sys
+import time
 import MySQLdb
 import ConfigParser
 
@@ -23,6 +24,16 @@ class DatabaseConnection:
 		c.close()
 		return ret
 
+	def getDocumentPath(self, docID):
+		"""Return the path of the document with the given ID."""
+		c = self._db.cursor()
+
+		c.execute('SELECT path FROM documents WHERE id = %s', (docID,))
+		path = c.fetchone()[0]
+
+		c.close()
+		return path
+
 	def addDocument(self, path):
 		"""
 		Create a blank database entry
@@ -40,12 +51,47 @@ class DatabaseConnection:
 		c.close()
 		return docID
 
-	def updateAttributes(self, documentID):
+	def updateAttributes(self, docID):
 		"""
 		Updates all attributes of and adds any applicable tags
 		to the document with the given ID.
 		"""
-		pass
+		path = self.getDocumentPath(docID)
+		pathStat = os.stat(path)
+		
+		#TODO: skip checks if not modified since last scan
+		# Modified
+		modified = pathStat.st_mtime
+		#TODO: is this number in MySQL TIMESTAMP friendly format?
+
+		# Size (in bytes)
+		size = pathStat.st_size
+		
+		# Add Applicable Tags
+
+		
+		#TODO: Perhaps retain some info on file type to avoid checking tags
+
+		# Duration
+		duration = None
+		if hasTag(docID, 'audio') or hasTag(docID, 'video'):
+			duration = None #get that duration!
+
+		width, height = None
+		if hasTag(docID, 'image') or hasTag(docID, 'video'):
+			
+			# Width
+			width = None #get that width!
+			
+			# Height
+			height = None #get height
+
+		c = self._db.cursor()
+
+		c.execute('UPDATE documents SET modified = %s, duration = %s, width = %s, height = %s, size = %s WHERE id = %s', (modified, duration, width, height, size, docID))
+		self._db.commit()
+		
+		c.close()
 
 def scanNewFiles(root, db):
 	"""
@@ -101,6 +147,7 @@ if __name__ == '__main__':
 	
 	db = DatabaseConnection(cfg['host'], cfg['user'], cfg['passwd'], cfg['db'])
 	
+	db.updateAttributes(1)
 	print(db.pathIsIndexed('ds'))
 
 
