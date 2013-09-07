@@ -32,11 +32,13 @@ class DatabaseConnection:
 		c = self._db.cursor()
 
 		c.execute('INSERT INTO documents (id, path, modified, duration, width, height, size) VALUES (NULL, %s, CURRENT_TIMESTAMP, NULL, NULL, NULL, 0)', (path,))
-		
 		self._db.commit()
+		
+		c.execute('SELECT id FROM documents WHERE path = %s', (path,))
+		docID = c.fetchone()[0]
 
 		c.close()
-		return -1
+		return docID
 
 	def updateAttributes(self, documentID):
 		"""
@@ -97,5 +99,6 @@ if __name__ == '__main__':
 	
 	db = DatabaseConnection(host, user, passwd, dbName)
 	
-	db.addDocument('ZINGABABABABAOOO')
+	print(db.addDocument('XXXXXXXXXXXXX'))
+
 
