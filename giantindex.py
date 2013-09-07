@@ -29,10 +29,12 @@ class DatabaseConnection:
 		"""
 		c = self._db.cursor()
 
-		c.execute("""INSERT INTO documents
-				(id, path, modified, duration, width, height, size)
-				VALUES (NULL, %s, %s, %s, %s, %s, %s)""",
-				(path, modified, duration, width, height, size))
+		c.execute('INSERT INTO documents (id, path, modified, duration, width, height, size) VALUES (NULL, %s, CURRENT_TIMESTAMP, NULL, NULL, NULL, 0)', (path,))
+		
+		c.commit()
+
+		print(c)
+		print(c.fetchall())
 
 		c.close()
 		return -1
@@ -71,6 +73,24 @@ if __name__ == '__main__':
 	
 	#scanNewFiles(root)
 	db = DatabaseConnection('localhost', 'giantindex', 'burrtango', 'giantindex')
-	print(db.pathIsIndexed('public/test.txt'))
-	print(db.pathIsIndexed('public/test.tdfgsdfgsdfgdxt'))
+	db.addDocument('sdfsfdf')
+	
+	# Locate configuration file
+	cfgFile = None
+	cfg_name = 'giantindex.cfg'
+	if os.access(cfg_name, os.R_OK):
+		cfgFile = cfg_name
+	elif os.access(os.path.join('~/', cfg_name), os.R_OK):
+		cfgFile = os.path.join('~/', cfg_name)
+	elif os.access(os.path.join('/etc/', cfg_name), os.R_OK):
+		cfgFile = os.path.join('/etc/', cfg_name)
+	
+	config = ConfigParser.RawConfigParser()
+	config.read(cfgFile)
+
+	host = config.get('database', 'host')
+	user = config.get('database', 'user')
+	passwd = config.get('database', 'passwd')
+	dbName = config.get('database', 'db')
+
 
