@@ -1,81 +1,34 @@
-# GIANT INDEX
-
-import os
 import sys
-import contextlib
+import os
 import ConfigParser
-import MySQLdb
 
-
-class Index(object):
-    def __init__(self, host, user, passwd, db):
-        self.db = MySQLdb.connect(
-            host=host, user=user, passwd=passwd, db=db)
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.close()
-
-    def close(self):
-        """Close the database connection."""
-        self.db.close()
-
-#    def pathIsIndexed(self, path):
-#        """Return true if the path is in the database, false otherwise."""
-#
-#        with contextlib.closing(self._db.cursor()) as c:
-#            c.execute('SELECT id FROM documents WHERE path = %s', (path,))
-#            return c.fetchone() is not None
-
-#    def getDocumentPath(self, docID):
-#        """Return the path of the document with the given ID."""
-#
-#        with contextlib.closing(self._db.cursor()) as c:
-#            c.execute('SELECT path FROM documents WHERE id = %s', (docID,))
-#            return c.fetchone()[0]
-
-    def addDocument(self, document):
-        """
-        Add or overwrite the given document in the index.
-	
-	document: Document object or document ID number.
-	
-	Return the updated document.
-        """
-
-        with contextlib.closing(self._db.cursor()) as c:
-            c.execute("""
-                    INSERT INTO documents (id, path, modified, duration, width, height, size)
-                    VALUES (NULL, %s, CURRENT_TIMESTAMP, NULL, NULL, NULL, 0)""", (path,))
-            self._db.commit()
-
-            c.execute('SELECT id FROM documents WHERE path = %s', (path,))
-            return c.fetchone()[0]
-    
-    def removeDocument(self, document):
-        """
-        Remove the given document from the index.
-        
-        document: Document object or document ID number.
-        """
-        pass
-
-    def findDocuments(self, *tags):
-        """
-        Return a set of documents with the given combination of tags.
-        
-        tags: Tag names or tuples of (tagName, tagValue),
-              or Comparison objects returned from the 
-
-
-def scanNewFiles(root, db):
+def index_file(index, path, reload_tags=False):
     """
-    Walk the given directory and
-    add any files to the database that are not already in it.
+    Index a file.
+    Add any new files to the index and load auto tags.
+    For existing files, update modified and size.
+    
+    index: Index to act on
+    path: path of file
+    reload_tags: load auto tags on existing files if True
 
-    Also loads up attributes, tags, and everything!
+    Throw exception on index error or io error.
+    """
+    pass
+
+
+def index_directory(index, path, excludePaths=(), reload_tags=False):
+    """
+    Recursively index a directory.
+    Add any new files to the index and load auto tags.
+    For existing files, update modified and size.
+
+    index: Index to act on
+    path: path of directory to index
+    excludePaths: collection of paths to skip
+    reload_tags: load auto tags on existing files?
+    
+    Throw exception on index error or io error.
     """
 
     for directory, subdirs, files in os.walk(root):
@@ -85,12 +38,11 @@ def scanNewFiles(root, db):
                 db.updateAttributes(doc)
                 print(os.path.join(directory, f))
 
-
-def getSettings():
+def get_settings():
     """
     Return a dict of settings and their values
-    from loading a settings file,
-    or exit the program if none is found.
+    from loading a settings file.
+    Throw exception if not found.
     """
     #TODO: Prompt the user? Cmd-line args?
 
@@ -118,11 +70,13 @@ def getSettings():
 
     return settings
 
-#TODO: Unindent.
-    def updateAttributes(self, docID):
+
+#TODO: Migrate.
+    def update_attributes(self, path):
         """
-        Updates all attributes of and adds any applicable tags
-        to the document with the given ID.
+        Update the indexed attributes for the given path.
+
+        Throw exception if path is not indexed.
         """
         path = self.getDocumentPath(docID)
         pathStat = os.stat(path)
