@@ -5,15 +5,21 @@ import MySQLdb
 class Document(object):
     """Immutable document descriptor."""
 
-    def __init__(self, path, modified, size, docID=None):
-        if docID:
-            self.docID = int(docID)
+    def __init__(self, path, modified, size, doc_id=None):
+        if doc_id:
+            self.doc_id = int(doc_id)
         else:
-            self.docID = None
+            self.doc_id = None
         self.path = str(path)
         self.modified = long(modified)
         self.size = long(size)
 
+class IndexPathConflictException(Exception):
+    def __init__(self, path):
+        self.path = path
+
+    def __str__(self):
+        return "%s is already indexed under another ID!" % self.path
 
 class Index(object):
     def __init__(self, host, user, passwd, db):
@@ -30,13 +36,6 @@ class Index(object):
         """Close the database connection."""
         self.db.close()
 
-#    def pathIsIndexed(self, path):
-#        """Return true if the path is in the database, false otherwise."""
-#
-#        with contextlib.closing(self._db.cursor()) as c:
-#            c.execute('SELECT id FROM documents WHERE path = %s', (path,))
-#            return c.fetchone() is not None
-
 #    def getDocumentPath(self, docID):
 #        """Return the path of the document with the given ID."""
 #
@@ -44,23 +43,58 @@ class Index(object):
 #            c.execute('SELECT path FROM documents WHERE id = %s', (docID,))
 #            return c.fetchone()[0]
 
+    def contains_doc_id(self, doc_id):
+        """Returns True if a document has this ID, False otherwise."""
+        with contextlib.closing(self.db.cursor()) as c:
+            c.execute('SELECT id FROM documents WHERE id = %s', (doc_id,))
+            return c.fetchone() is not None
+
+    def contains_path(self, path):
+        """Returns True if a document has this path, False otherwise."""
+        with contextlib.closing(self.db.cursor()) as c:
+            c.execute('SELECT id FROM documents WHERE path = %s', (path,))
+            return c.fetchone() is not None
+
     def add_document(self, document):
         """
         Add or overwrite the given document in the index.
-	
-	document: Document object or document ID number.
-	
-	Return the updated document.
-        """
+        document: Document object
 
-        with contextlib.closing(self._db.cursor()) as c:
-            c.execute("""
+        Return the updated document.
+        """
+        with contextlib.closing(self.db.cursor()) as c:
+
+            if document.doc_id is not None and self.contains_doc_id(document.doc_id):
+                # Existing Document
+
+                # check for path conflicts
+                c.execute('SELECT id FROM documents WHERE path = %s', (document.path,))
+                res = c.fetchone()
+                if res is not None and res[0] != document.doc_id:
+                    raise IndexPathConflictException(document.path)
+
+                # update db
+                pass
+
+            else:
+                # New Document
+
+                # check for path conflicts
+                c.execute('SELECT id FROM documents WHERE path = %s', (document.path,))
+                if c.fetchone() is not None:
+                    raise IndexPathConflictException(document.path)
+
+                # insert to db new with generated id
+                c.execute("""
                     INSERT INTO documents (id, path, modified, duration, width, height, size)
-                    VALUES (NULL, %s, CURRENT_TIMESTAMP, NULL, NULL, NULL, 0)""", (path,))
+                    VALUES (NULL, %s, CURRENT_TIMESTAMP, NULL, NULL, NULL, 0)""", (document.path,))
+
             self._db.commit()
 
+            # select new document object
             c.execute('SELECT id FROM documents WHERE path = %s', (path,))
-            return c.fetchone()[0]
+            
+            return Document(path, modified, size, doc_id)
     
     def remove_document(self, document):
         """

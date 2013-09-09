@@ -11,7 +11,7 @@ class DocumentTest(unittest.TestCase):
         d = Document(path, modified, size)
         self.assertEquals(d.path, path)
         self.assertEquals(d.size, size)
-        self.assertEquals(d.docID, None)
+        self.assertEquals(d.doc_id, None)
 
         d = Document(path, modified, size, docID)
         self.assertEquals(docID)
