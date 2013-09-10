@@ -15,19 +15,7 @@ FLUSH PRIVILEGES;
 
 __author__ = 'Michael Craft <mcraft@peak15.org>'
 
-import MySQLdb
-import contextlib
-
-
-def initialize_database(host, user, passwd, db):
-        with MySQLdb.connect(
-                host=host, user=user, passwd=passwd, db=db) \
-                as conn:
-
-            with contextlib.closing(conn.cursor()) as c:
-                c.execute("""
-
-CREATE TABLE IF NOT EXISTS documents (
+SQL = ("""CREATE TABLE IF NOT EXISTS documents (
   id int(11) unsigned NOT NULL AUTO_INCREMENT,
   path varchar(255) NOT NULL,
   modified timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -37,24 +25,21 @@ CREATE TABLE IF NOT EXISTS documents (
   INDEX modified_ind (modified),
   INDEX size_ind (size)
 ) ENGINE=InnoDB CHARSET=utf8 COLLATE=utf8_general_ci;
-
-CREATE TABLE IF NOT EXISTS thumbnails (
+""","""CREATE TABLE IF NOT EXISTS thumbnails (
   document int(11) unsigned NOT NULL,
   image varchar(255) NOT NULL,
   PRIMARY KEY (document),
   FOREIGN KEY (document) REFERENCES documents(id)
     ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB CHARSET=utf8 COLLATE=utf8_general_ci;
-
-CREATE TABLE IF NOT EXISTS tags (
+""","""CREATE TABLE IF NOT EXISTS tags (
   id int(11) unsigned NOT NULL AUTO_INCREMENT,
   name varchar(255) NOT NULL,
   `numeric` tinyint(1) NOT NULL DEFAULT 0,
   PRIMARY KEY (id),
   INDEX name_ind (name)
 ) ENGINE=InnoDB CHARSET=utf8 COLLATE=utf8_general_ci;
-
-CREATE TABLE IF NOT EXISTS documentTags (
+""","""CREATE TABLE IF NOT EXISTS documentTags (
   tag int(11) unsigned NOT NULL,
   document int(11) unsigned NOT NULL,
   string_value varchar(255) DEFAULT NULL,
@@ -68,10 +53,38 @@ CREATE TABLE IF NOT EXISTS documentTags (
   FOREIGN KEY (document) REFERENCES documents(id)
     ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB CHARSET=utf8 COLLATE=utf8_general_ci;
+""")
 
-                """)
+import MySQLdb
+import contextlib
+import sys
 
-                conn.commit()
+
+class DBConn(object):
+    def __init__(self, host, user, passwd, db):
+        self.db = MySQLdb.connect(
+            host=host, user=user, passwd=passwd, db=db)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+
+    def close(self):
+        self.db.close()
+
+    def initialize(self):
+        for cmd in SQL:
+            with contextlib.closing(self.db.cursor()) as c:
+                c.execute(cmd)
+            self.db.commit()
+            
+            
+
 
 if __name__ == '__main__':
-    initialize_database('localhost', 'test', 'test', 'test')
+    with DBConn('localhost', 'test', 'test', 'test') as db:
+        db.initialize()
+
+
