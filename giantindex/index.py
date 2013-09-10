@@ -15,11 +15,12 @@ class Document(object):
         self.size = long(size)
 
 class IndexPathConflictException(Exception):
-    def __init__(self, path):
+    def __init__(self, path, doc_id):
         self.path = path
+        self.doc_id = doc_id
 
     def __str__(self):
-        return "%s is already indexed under another ID!" % self.path
+        return "'%s' is already indexed under ID %i." % (self.path, self.doc_id)
 
 class Index(object):
     def __init__(self, host, user, passwd, db):
@@ -61,23 +62,29 @@ class Index(object):
         document: Document object
 
         Return the updated document.
+
+        Raises IndexPathConflictException if document.path is non-unique in the index.
         """
         with contextlib.closing(self.db.cursor()) as c:
 
             if document.doc_id is not None and self.contains_doc_id(document.doc_id):
-                # Existing Document
+                # Update Document
 
                 # check for path conflicts
                 c.execute('SELECT id FROM documents WHERE path = %s', (document.path,))
-                res = c.fetchone()
-                if res is not None and res[0] != document.doc_id:
-                    raise IndexPathConflictException(document.path)
+                results = c.fetchall()
 
-                # update db
-                pass
+                # to continue, results must be empty, or exactly one: this one
+                if results is None or len(results) == 0 \
+                        or (len(results) == 1 and results[0] != document.doc_id):
+                    # update db
+
+
+                else:
+                    raise IndexPathConflictException(document.path, results[0])
 
             else:
-                # New Document
+                # Insert Document
 
                 # check for path conflicts
                 c.execute('SELECT id FROM documents WHERE path = %s', (document.path,))
@@ -93,7 +100,7 @@ class Index(object):
 
             # select new document object
             c.execute('SELECT id FROM documents WHERE path = %s', (path,))
-            
+
             return Document(path, modified, size, doc_id)
     
     def remove_document(self, document):
