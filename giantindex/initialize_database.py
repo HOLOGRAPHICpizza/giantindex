@@ -49,7 +49,7 @@ CREATE TABLE IF NOT EXISTS thumbnails (
 CREATE TABLE IF NOT EXISTS tags (
   id int(11) unsigned NOT NULL AUTO_INCREMENT,
   name varchar(255) NOT NULL,
-  numeric tinyint(1) NOT NULL DEFAULT '0',
+  `numeric` tinyint(1) NOT NULL DEFAULT 0,
   PRIMARY KEY (id),
   INDEX name_ind (name)
 ) ENGINE=InnoDB CHARSET=utf8 COLLATE=utf8_general_ci;
@@ -70,3 +70,8 @@ CREATE TABLE IF NOT EXISTS documentTags (
 ) ENGINE=InnoDB CHARSET=utf8 COLLATE=utf8_general_ci;
 
                 """)
+
+                conn.commit()
+
+if __name__ == '__main__':
+    initialize_database('localhost', 'test', 'test', 'test')
