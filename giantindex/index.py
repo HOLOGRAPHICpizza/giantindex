@@ -5,11 +5,17 @@ import MySQLdb
 class Document(object):
     """Immutable document descriptor."""
 
-    def __init__(self, path, modified, size, doc_id=None):
-        if doc_id:
+    def __init__(self, path, modified, size, doc_id=None, added=None):
+        if doc_id is not None:
             self.doc_id = int(doc_id)
         else:
             self.doc_id = None
+
+        if added is not None:
+            self.added = long(added)
+        else:
+            self.added = None
+
         self.path = str(path)
         self.modified = long(modified)
         self.size = long(size)
@@ -78,8 +84,8 @@ class Index(object):
                 if results is None or len(results) == 0 \
                         or (len(results) == 1 and results[0] != document.doc_id):
                     # update db
-
-
+                    c.execute('UPDATE documents SET path = %s, modified = FROM_UNIXTIME(%s), size = %s WHERE id = %s',
+                            (document.path, document.modified, document.size, document.docID))
                 else:
                     raise IndexPathConflictException(document.path, results[0])
 
@@ -87,21 +93,28 @@ class Index(object):
                 # Insert Document
 
                 # check for path conflicts
-                c.execute('SELECT id FROM documents WHERE path = %s', (document.path,))
+                c.execute('SELECT id FROM documents WHERE path = %s',
+                        (document.path,))
                 if c.fetchone() is not None:
-                    raise IndexPathConflictException(document.path)
+                    raise IndexPathConflictException(document.path, results[0])
 
                 # insert to db new with generated id
                 c.execute("""
-                    INSERT INTO documents (id, path, modified, duration, width, height, size)
-                    VALUES (NULL, %s, CURRENT_TIMESTAMP, NULL, NULL, NULL, 0)""", (document.path,))
+                        INSERT INTO documents (id, path, added, modified, size)
+                        VALUES (DEFAULT, %s, DEFAULT, %s, %s)""",
+                        (document.path, document.modified, document.size))
 
-            self._db.commit()
-
+        self.db.commit()
+        with contextlib.closing(self.db.cursor()) as c:
             # select new document object
-            c.execute('SELECT id FROM documents WHERE path = %s', (path,))
-
-            return Document(path, modified, size, doc_id)
+            c.execute('SELECT id, added FROM documents WHERE path = %s', (path,))
+            row = c.fetchone()
+            return Document(
+                    document.path,
+                    document.modified,
+                    document.size,
+                    row[0],
+                    row[1])
     
     def remove_document(self, document):
         """

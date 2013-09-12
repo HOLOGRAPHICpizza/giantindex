@@ -11,6 +11,10 @@ CREATE DATABASE example_db CHARACTER SET=utf8 COLLATE=utf8_general_ci;
 GRANT ALL ON example_db.* TO 'example'@'localhost';
 GRANT ALL ON example_db.* TO 'example'@'%';
 FLUSH PRIVILEGES;
+
+Then run this like:
+
+$ python initialize_database.py host user passwd database
 """
 
 __author__ = 'Michael Craft <mcraft@peak15.org>'
@@ -18,10 +22,12 @@ __author__ = 'Michael Craft <mcraft@peak15.org>'
 SQL = ("""CREATE TABLE IF NOT EXISTS documents (
   id int(11) unsigned NOT NULL AUTO_INCREMENT,
   path varchar(255) NOT NULL,
+  added timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   modified timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   size bigint(20) NOT NULL,
   PRIMARY KEY (id),
   INDEX path_ind (path),
+  INDEX added_ind (added),
   INDEX modified_ind (modified),
   INDEX size_ind (size)
 ) ENGINE=InnoDB CHARSET=utf8 COLLATE=utf8_general_ci;
@@ -79,12 +85,9 @@ class DBConn(object):
             with contextlib.closing(self.db.cursor()) as c:
                 c.execute(cmd)
             self.db.commit()
-            
-            
-
 
 if __name__ == '__main__':
-    with DBConn('localhost', 'test', 'test', 'test') as db:
+    with DBConn(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]) as db:
         db.initialize()
 
 
