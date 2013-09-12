@@ -43,24 +43,21 @@ class Index(object):
         """Close the database connection."""
         self.db.close()
 
-#    def getDocumentPath(self, docID):
-#        """Return the path of the document with the given ID."""
-#
-#        with contextlib.closing(self._db.cursor()) as c:
-#            c.execute('SELECT path FROM documents WHERE id = %s', (docID,))
-#            return c.fetchone()[0]
-
     def contains_doc_id(self, doc_id):
         """Returns True if a document has this ID, False otherwise."""
         with contextlib.closing(self.db.cursor()) as c:
             c.execute('SELECT id FROM documents WHERE id = %s', (doc_id,))
             return c.fetchone() is not None
 
-    def contains_path(self, path):
-        """Returns True if a document has this path, False otherwise."""
+    def doc_id_of_path(self, path):
+        """Returns the ID of the document with this path if one exists, or None otherwise."""
         with contextlib.closing(self.db.cursor()) as c:
             c.execute('SELECT id FROM documents WHERE path = %s', (path,))
-            return c.fetchone() is not None
+            row = c.fetchone()
+            if row is not None:
+                return row[0]
+            else:
+                return None
 
     def add_document(self, document):
         """
@@ -73,41 +70,38 @@ class Index(object):
         """
         with contextlib.closing(self.db.cursor()) as c:
 
+            path_doc_id = self.doc_id_of_path(document.path)
+
+            # Is an on-file doc_id is specified?
             if document.doc_id is not None and self.contains_doc_id(document.doc_id):
                 # Update Document
 
                 # check for path conflicts
-                c.execute('SELECT id FROM documents WHERE path = %s', (document.path,))
-                results = c.fetchall()
-
-                # to continue, results must be empty, or exactly one: this one
-                if results is None or len(results) == 0 \
-                        or (len(results) == 1 and results[0] != document.doc_id):
+                # must be no docs with path or only this doc
+                if path_doc_id is None or path_doc_id == document.doc_id:
                     # update db
                     c.execute('UPDATE documents SET path = %s, modified = FROM_UNIXTIME(%s), size = %s WHERE id = %s',
                             (document.path, document.modified, document.size, document.docID))
                 else:
-                    raise IndexPathConflictException(document.path, results[0])
+                    raise IndexPathConflictException(document.path, path_doc_id)
 
             else:
                 # Insert Document
 
                 # check for path conflicts
-                c.execute('SELECT id FROM documents WHERE path = %s',
-                        (document.path,))
-                if c.fetchone() is not None:
-                    raise IndexPathConflictException(document.path, results[0])
+                if path_doc_id is not None:
+                    raise IndexPathConflictException(document.path, path_doc_id)
 
                 # insert to db new with generated id
                 c.execute("""
                         INSERT INTO documents (id, path, added, modified, size)
                         VALUES (DEFAULT, %s, DEFAULT, %s, %s)""",
                         (document.path, document.modified, document.size))
-
         self.db.commit()
+
         with contextlib.closing(self.db.cursor()) as c:
             # select new document object
-            c.execute('SELECT id, added FROM documents WHERE path = %s', (path,))
+            c.execute('SELECT id, added FROM documents WHERE path = %s', (document.path,))
             row = c.fetchone()
             return Document(
                     document.path,

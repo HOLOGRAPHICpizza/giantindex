@@ -59,7 +59,8 @@ SQL = ("""CREATE TABLE IF NOT EXISTS documents (
   FOREIGN KEY (document) REFERENCES documents(id)
     ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB CHARSET=utf8 COLLATE=utf8_general_ci;
-""")
+""","""INSERT INTO documents (id, path, added, modified, size)
+VALUES (DEFAULT, '/testpath', DEFAULT, DEFAULT, 1337)""")
 
 import MySQLdb
 import contextlib

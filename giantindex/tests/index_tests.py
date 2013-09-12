@@ -1,20 +1,37 @@
-__author__ = 'michael'
-
 import unittest
-from giantindex.index import *
+import giantindex.index as gindex
+import giantindex.settings as settings
 
 
 class DocumentTest(unittest.TestCase):
     def constructor(self):
-        path, modified, size, docID = 'blarg', 1337, 69, 9001
+        path, modified, size, docID, added = 'blarg', 1337, 69, 9001, 343
 
-        d = Document(path, modified, size)
+        d = gindex.Document(path, modified, size)
         self.assertEquals(d.path, path)
         self.assertEquals(d.size, size)
         self.assertEquals(d.doc_id, None)
 
-        d = Document(path, modified, size, docID)
-        self.assertEquals(docID)
+        d = gindex.Document(path, modified, size, docID, added)
+        self.assertEquals(d.doc_id, docID)
+        self.assertEquals(d.added, added)
+
+class IndexTest(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        cfg = settings.get()
+        if cfg is None:
+            raise settings.ConfigurationNotFoundException()
+
+        IndexTest.index = gindex.Index(cfg['host'], cfg['user'], cfg['passwd'], cfg['db'])
+
+    @classmethod
+    def tearDownClass(cls):
+        IndexTest.index.close()
+
+    def contains_doc_id(self):
+        self.assertTrue(IndexTest.index.contains_doc_id(1)
 
 if __name__ == '__main__':
     unittest.main()
