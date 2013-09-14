@@ -34,5 +34,9 @@ class IndexTest(unittest.TestCase):
     def test_contains_doc_id(self):
         self.assertTrue(IndexTest.index.contains_doc_id(1), "Index should contain doc_id 1.")
 
+    def test_doc_id_of_path(self):
+        doc_id = IndexTest.index.doc_id_of_path('/testpath')
+        self.assertEqual(1, doc_id, '/testpath should have doc_id 1')
+
 if __name__ == '__main__':
     unittest.main()
