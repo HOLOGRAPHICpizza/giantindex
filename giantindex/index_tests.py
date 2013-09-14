@@ -1,6 +1,7 @@
 import unittest
 import index as gindex
 import settings
+import time
 
 
 class DocumentTest(unittest.TestCase):
@@ -37,6 +38,27 @@ class IndexTest(unittest.TestCase):
     def test_doc_id_of_path(self):
         doc_id = IndexTest.index.doc_id_of_path('/testpath')
         self.assertEqual(1, doc_id, '/testpath should have doc_id 1')
+
+    def test_add_document(self):
+        path = str(time.time())
+        doc = gindex.Document(path, 1337, 9001)
+        new_doc = IndexTest.index.add_document(doc)
+
+        self.assertEqual(doc.path, new_doc.path)
+        self.assertEqual(doc.modified, new_doc.modified)
+        self.assertEqual(doc.size, new_doc.size)
+        self.assertIsNotNone(new_doc.doc_id)
+        self.assertIsNotNone(new_doc.added)
+
+        new_path = path[::-1]
+        doc3 = gindex.Document(new_path, doc.modified, doc.size, new_doc.doc_id, new_doc.added)
+        doc4 = IndexTest.index.add_document(doc3)
+
+        self.assertEqual(new_path, doc4.path)
+        self.assertEqual(doc.modified, doc4.modified)
+        self.assertEqual(doc.size, doc4.size)
+        self.assertEqual(new_doc.doc_id, doc4.doc_id)
+        self.assertEqual(new_doc.added, doc4.added)
 
 if __name__ == '__main__':
     unittest.main()

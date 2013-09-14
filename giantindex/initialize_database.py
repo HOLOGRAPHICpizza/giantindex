@@ -22,8 +22,8 @@ __author__ = 'Michael Craft <mcraft@peak15.org>'
 SQL = ('DROP TABLE IF EXISTS documentTags, thumbnails','DROP TABLE IF EXISTS documents, tags',"""CREATE TABLE IF NOT EXISTS documents (
   id int(11) unsigned NOT NULL AUTO_INCREMENT,
   path varchar(255) NOT NULL,
-  added timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  modified timestamp NOT NULL,
+  added bigint(20) NOT NULL,
+  modified bigint(20) NOT NULL,
   size bigint(20) NOT NULL,
   PRIMARY KEY (id),
   INDEX path_ind (path),
