@@ -1,8 +1,36 @@
-import sys
 import os
-import ConfigParser
+import settings
+import index
 
-def index_file(index, path, reload_tags=False):
+
+def file_scanners():
+    ret = []
+
+    def s_music(f):
+        """Detect mp3, flac. Tag them."""
+        if f.lower().endswith('.mp3') or f.lower().endswith('.flac'):
+            # tag da metadata!
+            pass
+
+        elif f.lower().endswith('.m4a'):
+            # tag with GET OFF M4A
+            pass
+    ret.append(s_music)
+
+    def s_image(f):
+        """Detect png, jpg, etc. get resolution."""
+        pass
+    ret.append(s_image)
+
+    def s_video(f):
+        """Detect avi, mov, etc. get length, resoultion, etc."""
+        pass
+    ret.append(s_video)
+
+    return ret
+
+
+def index_file(ndx, path, reload_tags=False):
     """
     Index a file.
     Add any new files to the index and load auto tags.
@@ -14,10 +42,18 @@ def index_file(index, path, reload_tags=False):
 
     Throw exception on index error or io error.
     """
-    pass
+    stats = os.stat(path)
+    doc = index.Document(path, long(stats.st_mtime), long(stats.st_size))
+
+    doc_id, new = ndx.add_document(doc)
+
+    if new or reload_tags:
+        # load the awesome shit
+        for func in file_scanners():
+            func(path)
 
 
-def index_directory(index, path, excludePaths=(), reload_tags=False):
+def index_directory(ndx, path, exclude=None, reload_tags=False):
     """
     Recursively index a directory.
     Add any new files to the index and load auto tags.
@@ -31,93 +67,26 @@ def index_directory(index, path, excludePaths=(), reload_tags=False):
     Throw exception on index error or io error.
     """
 
-    for directory, subdirs, files in os.walk(root):
+    for directory, subdirs, files in os.walk(path):
         for f in files:
-            if not db.pathIsIndexed(f):
-                doc = db.addDocument(f)
-                db.updateAttributes(doc)
-                print(os.path.join(directory, f))
+            tp = os.path.join(directory, f)
+            if exclude is not None and tp not in exclude:
+                print(tp)
+                index_file(ndx, tp, reload_tags)
 
-def get_settings():
-    """
-    Return a dict of settings and their values
-    from loading a settings file.
-    Throw exception if not found.
-    """
-    #TODO: Prompt the user? Cmd-line args?
-
-    # Locate configuration file
-    cfg_name = 'giantindex.cfg'
-    if os.access(cfg_name, os.R_OK):
-        cfgFile = cfg_name
-    elif os.access(os.path.expanduser('~/.' + cfg_name), os.R_OK):
-        cfgFile = os.path.expanduser('~/.' + cfg_name)
-    elif os.access(os.path.join('/etc/', cfg_name), os.R_OK):
-        cfgFile = os.path.join('/etc/', cfg_name)
-    else:
-        print('Could not load ./giantindex.cfg, ~/.giantindex.cfg, or /etc/giantindex.cfg')
-        sys.exit(1)
-
-    config = ConfigParser.RawConfigParser()
-    config.read(cfgFile)
-
-    settings = {}
-
-    for key in ('host', 'user', 'passwd', 'db'):
-        settings[key] = config.get('database', key)
-    for key in ('include', 'exclude'):
-        settings[key] = config.get('indexer', key)
-
-    return settings
-
-
-#TODO: Migrate.
-    def update_attributes(self, path):
-        """
-        Update the indexed attributes for the given path.
-
-        Throw exception if path is not indexed.
-        """
-        path = self.getDocumentPath(docID)
-        pathStat = os.stat(path)
-
-        #TODO: skip checks if not modified since last scan
-        # Modified
-        modified = pathStat.st_mtime
-        #TODO: is this number in MySQL TIMESTAMP friendly format?
-
-        # Size (in bytes)
-        size = pathStat.st_size
-
-        # Add Applicable Tags
-
-
-        #TODO: Perhaps retain some info on file type to avoid checking tags
-
-        # Duration
-        duration = None
-        if hasTag(docID, 'audio') or hasTag(docID, 'video'):
-            duration = None #get that duration!
-
-        width, height = None
-        if hasTag(docID, 'image') or hasTag(docID, 'video'):
-
-            # Width
-            width = None #get that width!
-
-            # Height
-            height = None #get height
-
-        with contextlib.closing(self._db.cursor()) as c:
-            c.execute(
-                'UPDATE documents SET modified = %s, duration = %s, width = %s, height = %s, size = %s WHERE id = %s',
-                (modified, duration, width, height, size, docID))
-            self._db.commit()
 
 if __name__ == '__main__':
 
-    cfg = getSettings()
+    cfg = settings.get()
+    if cfg is None:
+        raise settings.ConfigurationNotFoundException()
 
-    with DatabaseConnection(cfg['host'], cfg['user'], cfg['passwd'], cfg['db']) as db:
-        print(db.pathIsIndexed('/home/pghjgublic/test.txt'))
-        #db.updateAttributes(1)
+    with index.Index(cfg['host'], cfg['user'], cfg['passwd'], cfg['db']) as ndx:
+        nclude = cfg['include'].split('|')
+
+        xclude = cfg.get('exclude', None)
+        if xclude is not None:
+            xclude = xclude.split('|')
+
+        for path in nclude:
+            index_directory(ndx, path, exclude=xclude)

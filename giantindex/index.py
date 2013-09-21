@@ -5,7 +5,7 @@ import MySQLdb
 class Document(object):
     """Immutable document descriptor."""
 
-    def __init__(self, path, modified, size, doc_id=None, added=None):
+    def __init__(self, path, modified, size, doc_id=None, added=None, new=False):
         if doc_id is not None:
             self.doc_id = int(doc_id)
         else:
@@ -19,6 +19,8 @@ class Document(object):
         self.path = str(path)
         self.modified = long(modified)
         self.size = long(size)
+        self.new = new
+
 
 class IndexPathConflictException(Exception):
     def __init__(self, path, doc_id):
@@ -27,6 +29,7 @@ class IndexPathConflictException(Exception):
 
     def __str__(self):
         return "'%s' is already indexed under ID %i." % (self.path, self.doc_id)
+
 
 class Index(object):
     def __init__(self, host, user, passwd, db):
@@ -64,7 +67,7 @@ class Index(object):
         Add or overwrite the given document in the index.
         document: Document object
 
-        Return the updated document.
+        Return the updated document, and a boolean indicating if it is a new document
 
         Raises IndexPathConflictException if document.path is non-unique in the index.
         """
@@ -88,6 +91,8 @@ class Index(object):
             else:
                 # Insert Document
 
+                document.new = True
+
                 # check for path conflicts
                 if path_doc_id is not None:
                     raise IndexPathConflictException(document.path, path_doc_id)
@@ -108,7 +113,8 @@ class Index(object):
                     document.modified,
                     document.size,
                     row[0],
-                    row[1])
+                    row[1],
+                    new=document.new)
     
     def remove_document(self, document):
         """

@@ -3,6 +3,7 @@ __author__ = 'Michael Craft <mcraft@peak15.org>'
 import os
 import ConfigParser
 
+
 def get():
     """
     Return a dict of settings and their values
@@ -37,6 +38,7 @@ def get():
         settings[key] = config.get('indexer', key)
 
     return settings
+
 
 class ConfigurationNotFoundException(Exception):
     def __str__(self):
