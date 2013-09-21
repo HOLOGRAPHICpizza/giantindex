@@ -126,7 +126,33 @@ class Index(object):
 
     def get_document(self, doc_id_or_path):
         """Return the Document with the given id or path, or None if not found."""
-        pass
+        doc_id = None
+        path = None
+        try:
+            int(doc_id_or_path)
+            doc_id = int(doc_id_or_path)
+        except ValueError:
+            path = str(doc_id_or_path)
+
+        with contextlib.closing(self.db.cursor()) as c:
+
+            if doc_id is not None:
+                c.execute("SELECT * FROM documents WHERE id = %s", (doc_id,))
+
+            else:
+                c.execute("SELECT * FROM documents WHERE path = %s", (path,))
+
+            row = c.fetchone()
+
+            if row is not None:
+                return Document(
+                    row[1],
+                    row[3],
+                    row[4],
+                    doc_id=row[0],
+                    added=row[2])
+            else:
+                return None
 
     def find_documents(self, *tags):
         """
@@ -160,7 +186,13 @@ class Index(object):
 
     def get_all_tags(self):
         """Return a set of all tag names in the index."""
-        pass
+        with contextlib.closing(self.db.cursor()) as c:
+            c.execute('SELECT name FROM tags')
+            tags = set()
+            rows = c.fetchall()
+            for row in rows:
+                tags.add(row[0])
+            return tags
 
     def tag_document(self, document, *tags):
         """

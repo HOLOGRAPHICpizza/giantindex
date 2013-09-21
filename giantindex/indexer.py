@@ -16,39 +16,77 @@ def file_scanners(ndx):
             else:
                 tag_set.add(str(tag))
                 num_tags[tag] = False
-
-    r_tags('filetype')
+    def add_tags():
+        ndx_tags = ndx.get_all_tags()
+        unregd = tag_set.difference(ndx_tags)
+        for tag in unregd:
+            ndx.add_tag(tag, num_tags[tag])
+    r_tags('extension', 'music', ('duration', True), ('bitrate', True),
+           'genre', 'artist', 'album', 'track', 'name', ('width', True),
+           ('height', True), 'image', 'video')
+    add_tags()
 
     def s_music(f):
         """Detect mp3, flac. Tag them."""
+        doc = ndx.get_document(f)
         if f.lower().endswith('.mp3') or f.lower().endswith('.flac'):
             # tag da metadata!
-            pass
+            ndx.tag_document(doc, 'music')
+            if f.lower().endswith('.mp3'):
+                ndx.tag_document(doc, ('extension', 'mp3'))
+            else:
+                ndx.tag_document(doc, ('extension', 'flac'))
 
         elif f.lower().endswith('.m4a'):
             # tag with GET OFF M4A
-            pass
+            ndx.tag_document(doc, ('extension', 'm4a'))
     ret.append(s_music)
-    r_tags('music', ('duration', True), ('bitrate', True),
-           'genre', 'artist', 'album', 'track', 'name')
 
     def s_image(f):
         """Detect png, jpg, etc. get resolution."""
-        pass
+        flower = f.lower()
+        e = None
+        if flower.endswith('.png'):
+            e = 'png'
+        elif flower.endswith('.jpg') or flower.endswith('.jepg'):
+            e = 'jpg'
+        elif flower.endswith('.xcf'):
+            e = 'xcf'
+        elif flower.endswith('.svg'):
+            e = 'svg'
+        elif flower.endswith('.gif'):
+            e = 'gif'
+        elif flower.endswith('.bmp'):
+            e = 'bmp'
+        elif flower.endswith('.ico'):
+            e = 'ico'
+
+        if e is not None:
+            doc = ndx.get_document(f)
+            ndx.tag_document(doc, 'image', ('extension', e))
     ret.append(s_image)
-    r_tags(('width', True), ('height', True), 'image')
 
     def s_video(f):
         """Detect avi, mov, etc. get length, resoultion, etc."""
-        pass
+        flower = f.lower()
+        e = None
+        if flower.endswith('.avi'):
+            e = 'avi'
+        elif flower.endswith('.mov'):
+            e = 'mov'
+        elif flower.endswith('.mkv'):
+            e = 'mkv'
+        elif flower.endswith('.mpeg') or flower.endswith('.mpg'):
+            e = 'mpeg'
+        elif flower.endswith('.m4v'):
+            e = 'm4v'
+        elif flower.endswith('.avc'):
+            e = 'avc'
+
+        if e is not None:
+            doc = ndx.get_document(f)
+            ndx.tag_document(doc, 'video', ('extension', e))
     ret.append(s_video)
-    r_tags('video')
-
-    ndx_tags = ndx.get_all_tags()
-    unregd = tag_set.difference(ndx_tags)
-
-    for tag in unregd:
-        ndx.add_tag(tag, num_tags[tag])
 
     return ret
 
