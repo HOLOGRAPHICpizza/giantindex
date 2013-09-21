@@ -139,7 +139,20 @@ class Index(object):
 
     def add_tag(self, name, numeric=True):
         """Add or overwrite the given tag in the index."""
-        pass
+        with contextlib.closing(self.db.cursor()) as c:
+            num = 1
+            if not numeric:
+                num = 0
+
+            c.execute("""
+                    INSERT INTO tags (id, name, numeric)
+                    VALUES (DEFAULT, %s, %s)""",
+                      (name, num))
+        self.db.commit()
+
+        with contextlib.closing(self.db.cursor()) as c:
+            c.execute('SELECT id FROM tags WHERE name = %s', (name,))
+            return c.fetchone()[0]
 
     def delete_tag(self, name):
 	"""Remove the given tag from the index."""
