@@ -21,7 +21,10 @@ class Document(object):
         self.path = os.path.abspath(str(path))
         self.modified = long(modified)
         self.size = long(size)
-        self.new = new
+        self.new = new is True
+
+    def __eq__(self, other):
+        return self.doc_id == other.doc_id
 
 
 class IndexPathConflictException(Exception):
@@ -47,7 +50,6 @@ class InvalidTagException(Exception):
 
     def __str__(self):
         return self.msg
-
 
 
 class Index(object):
@@ -80,7 +82,7 @@ class Index(object):
             c.execute('SELECT id FROM documents WHERE path = %s', (os.path.abspath(str(path)),))
             row = c.fetchone()
             if row is not None:
-                return row[0]
+                return int(row[0])
             else:
                 return None
 
@@ -193,7 +195,70 @@ class Index(object):
         tags: Tag names or tuples of (tagName, tagValue),
               or Comparison objects from the comparisons module.
         """
-        pass
+        num_tags = set()
+        str_tags = set()
+        nullval_tags = set()
+        for tag in tags:
+            if isinstance(tag, collections.Container):
+                tag_name = str(tag[0])
+
+                numeric = False
+                with self.cursor() as c:
+                    c.execute("SELECT numeric FROM tags WHERE name = %s", (tag_name,))
+                    row = c.fetchone()
+                    if row is not None:
+                        numeric = int(row[0]) == 1
+                    else:
+                        raise InvalidTagException("% is not a valid tag." % (tag_name,))
+
+                if numeric:
+                    num_tags.add((tag_name, int(tag[1])))
+                else:
+                    str_tags.add((tag_name, str(tag[1])))
+
+            else:
+                nullval_tags.add(str(tag))
+
+        docs = set()
+        #TODO: verfiy this works
+        for tag in nullval_tags:
+            with self.cursor() as c:
+                c.execute("""
+                         SELECT id, path, added, modified, size
+                         FROM documents, tags, document_tags
+                         WHERE tags.name = %s AND tags.id = document_tags.tag AND tags.document = documents.id""",
+                         (tag,))
+                matches = set()
+                rows = c.fetchall()
+                for row in rows:
+                    matches.add(Document(row[1], row[3], row[4], row[0], row[2]))
+                docs = docs.intersection(docs, matches)
+        for tag, value in str_tags:
+            with self.cursor() as c:
+                c.execute("""
+                         SELECT id, path, added, modified, size
+                         FROM documents, tags, document_tags
+                         WHERE tags.name = %s AND tags.id = document_tags.tag AND document_tags.string_value = %s AND tags.document = documents.id""",
+                         (tag, value))
+                matches = set()
+                rows = c.fetchall()
+                for row in rows:
+                    matches.add(Document(row[1], row[3], row[4], row[0], row[2]))
+                docs = docs.intersection(docs, matches)
+        for tag, value in num_tags:
+            with self.cursor() as c:
+                c.execute("""
+                         SELECT id, path, added, modified, size
+                         FROM documents, tags, document_tags
+                         WHERE tags.name = %s AND tags.id = document_tags.tag AND document_tags.int_value = %s AND tags.document = documents.id""",
+                         (tag, value))
+                matches = set()
+                rows = c.fetchall()
+                for row in rows:
+                    matches.add(Document(row[1], row[3], row[4], row[0], row[2]))
+                docs = docs.intersection(docs, matches)
+
+        return docs
 
     def add_tag(self, name, numeric=True):
         """Add or overwrite the given tag in the index."""
