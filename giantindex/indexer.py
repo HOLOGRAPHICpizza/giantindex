@@ -165,13 +165,13 @@ def index_directory(ndex, path, scanners, exclude=None, reload_tags=False):
     walk_path = os.path.abspath(path)
     print("\nIndexing %s:" % (walk_path,))
 
-    last_new = False
+    last_new = True
     for directory, subdirs, files in os.walk(walk_path):
         if exclude is None or directory not in exclude:
             for f in files:
                 tp = os.path.abspath(os.path.join(directory, f))
                 if exclude is None or tp not in exclude:
-                    last_new = index_file(ndex, tp, scanners, reload_tags, last_new)
+                    last_new = index_file(ndex, tp, scanners, last_new, reload_tags)
 
     sys.stdout.write("\n")
 
