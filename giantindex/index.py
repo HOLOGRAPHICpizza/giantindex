@@ -1,7 +1,6 @@
 import contextlib
 import MySQLdb
 import os
-import collections
 
 
 class Document(object):
@@ -37,7 +36,7 @@ class IndexPathConflictException(Exception):
 
 
 class InvalidDocumentException(Exception):
-    def __init(self, msg=''):
+    def __init(self, msg):
         self.msg = str(msg)
 
     def __str__(self):
@@ -45,7 +44,7 @@ class InvalidDocumentException(Exception):
 
 
 class InvalidTagException(Exception):
-    def __init(self, msg=''):
+    def __init__(self, msg):
         self.msg = str(msg)
 
     def __str__(self):
@@ -91,24 +90,27 @@ class Index(object):
         Add or overwrite the given document in the index.
         document: Document object
 
-        Return the updated document, and a boolean indicating if it is a new document
+        Return the updated document.
 
         Raises IndexPathConflictException if document.path is non-unique in the index.
         """
         with self.cursor() as c:
+            path_doc_id = self.doc_id_of_path(str(document.path))
 
-            path_doc_id = self.doc_id_of_path(document.path)
+            doc_id = document.doc_id
+            if document.doc_id is None:
+                doc_id = path_doc_id
 
-            # Is an on-file doc_id is specified?
-            if document.doc_id is not None and self.contains_doc_id(document.doc_id):
+            # Is an on-file doc_id specified?
+            if doc_id is not None and self.contains_doc_id(doc_id):
                 # Update Document
 
                 # check for path conflicts
                 # must be no docs with path or only this doc
-                if path_doc_id is None or path_doc_id == document.doc_id:
+                if path_doc_id is None or path_doc_id == doc_id:
                     # update db
                     c.execute('UPDATE documents SET path = %s, modified = FROM_UNIXTIME(%s), size = %s WHERE id = %s',
-                             (document.path, document.modified, document.size, document.docID))
+                             (document.path, long(document.modified), document.size, doc_id))
                 else:
                     raise IndexPathConflictException(document.path, path_doc_id)
 
@@ -124,7 +126,7 @@ class Index(object):
                 # insert to db new with generated id
                 c.execute("""
                          INSERT INTO documents (id, path, added, modified, size)
-                         VALUES (DEFAULT, %s, DEFAULT, %s, %s)""",
+                         VALUES (DEFAULT, %s, UNIX_TIMESTAMP(CURRENT_TIMESTAMP), %s, %s)""",
                          (document.path, document.modified, document.size))
         self.db.commit()
 
@@ -199,12 +201,12 @@ class Index(object):
         str_tags = set()
         nullval_tags = set()
         for tag in tags:
-            if isinstance(tag, collections.Container):
+            if not isinstance(tag, str):
                 tag_name = str(tag[0])
 
                 numeric = False
                 with self.cursor() as c:
-                    c.execute("SELECT numeric FROM tags WHERE name = %s", (tag_name,))
+                    c.execute("SELECT `numeric` FROM tags WHERE name = %s", (tag_name,))
                     row = c.fetchone()
                     if row is not None:
                         numeric = int(row[0]) == 1
@@ -268,7 +270,7 @@ class Index(object):
                 num = 0
 
             c.execute("""
-                    INSERT INTO tags (id, name, numeric)
+                    INSERT INTO tags (id, name, `numeric`)
                     VALUES (DEFAULT, %s, %s)""",
                       (str(name), num))
         self.db.commit()
@@ -309,25 +311,26 @@ class Index(object):
 
         for tag in tags:
             with self.cursor() as c:
-                str_val, int_val = 'NULL'
-                tag_name = str(tag[0])
+                str_val = int_val = 'NULL'
                 tag_id = None
                 numeric = False
 
-                c.execute("SELECT id, numeric FROM tags WHERE name = %s", (tag_name,))
+                if isinstance(tag, str):
+                    tag_name = str(tag)
+                else:
+                    tag_name = str(tag[0])
+                    if numeric:
+                        int_val = int(tag[1])
+                    else:
+                        str_val = str(tag[1])
+                edsfg  c.execute("SELECT id, `numeric` FROM tags WHERE name = %s", (tag_name,))
                 row = c.fetchone()
                 if row is not None:
                     tag_id = int(row[0])
                     if int(row[1]) == 1:
                         numeric = True
                 else:
-                    raise InvalidTagException("%s is not a valid tag." % (tag_name,))
-
-                if isinstance(tag, collections.Container) and tag[1] is not None:
-                    if numeric:
-                        int_val = int(tag[1])
-                    else:
-                        str_val = str(tag[1])
+                    raise InvalidTagException("%s is not a valid tag." % tag_name)
 
                 #TODO: verify this works
                 c.execute("""

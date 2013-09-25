@@ -1,7 +1,6 @@
 import os
 import settings
 import index
-import collections
 
 
 class FileScanners(object):
@@ -17,9 +16,9 @@ class FileScanners(object):
         tag_set = set()
         num_tags = {}
         for tag in tags:
-            if isinstance(tag, collections.Container):
+            if not isinstance(tag, str):
                 tag_set.add(str(tag[0]))
-                num_tags[tag] = tag[1] is True
+                num_tags[str(tag[0])] = tag[1] is True
             else:
                 tag_set.add(str(tag))
                 num_tags[tag] = False
@@ -106,17 +105,17 @@ def index_file(ndex, path, scanners, reload_tags=False):
     stats = os.stat(tp)
     doc = index.Document(tp, long(stats.st_mtime), long(stats.st_size))
 
-    doc_id, new = ndex.add_document(doc)
+    new_doc = ndex.add_document(doc)
 
-    if new:
-        print("add %s" % (tp,))
+    if new_doc.new:
+        print("add %s" % (new_doc.path,))
     else:
-        print("update %s" % (tp,))
+        print("update %s" % (new_doc.path,))
 
-    if new or reload_tags:
+    if new_doc.new or reload_tags:
         # load the awesome shit
         for func in scanners:
-            func(tp)
+            func(new_doc.path)
 
 
 def index_directory(ndex, path, scanners, exclude=None, reload_tags=False):

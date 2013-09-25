@@ -19,7 +19,7 @@ $ python initialize_database.py host user passwd database
 
 __author__ = 'Michael Craft <mcraft@peak15.org>'
 
-SQL = ('DROP TABLE IF EXISTS documentTags, thumbnails','DROP TABLE IF EXISTS documents, tags',"""CREATE TABLE IF NOT EXISTS documents (
+SQL = ('DROP TABLE IF EXISTS document_tags, thumbnails','DROP TABLE IF EXISTS documents, tags',"""CREATE TABLE IF NOT EXISTS documents (
   id int(11) unsigned NOT NULL AUTO_INCREMENT,
   path varchar(255) NOT NULL,
   added bigint(20) NOT NULL,
@@ -60,7 +60,7 @@ SQL = ('DROP TABLE IF EXISTS documentTags, thumbnails','DROP TABLE IF EXISTS doc
     ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB CHARSET=utf8 COLLATE=utf8_general_ci;
 ""","""INSERT INTO documents (id, path, added, modified, size)
-VALUES (DEFAULT, '/testpath', DEFAULT, CURRENT_TIMESTAMP, 1337)""")
+VALUES (DEFAULT, '/testpath', 1337, 1337, 1337)""")
 
 import MySQLdb
 import contextlib
