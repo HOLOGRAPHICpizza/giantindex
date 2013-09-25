@@ -181,7 +181,7 @@ class Index(object):
             return c.fetchone()[0]
 
     def delete_tag(self, name):
-	"""Remove the given tag from the index."""
+        """Remove the given tag from the index."""
         pass
 
     def get_all_tags(self):
@@ -204,4 +204,3 @@ class Index(object):
     def get_document_tags(self, document):
         """Return a dictionary of tags mapped to values for the given document ID or Document object."""
         pass
-

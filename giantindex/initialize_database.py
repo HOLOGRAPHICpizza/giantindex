@@ -45,7 +45,7 @@ SQL = ('DROP TABLE IF EXISTS documentTags, thumbnails','DROP TABLE IF EXISTS doc
   PRIMARY KEY (id),
   INDEX name_ind (name)
 ) ENGINE=InnoDB CHARSET=utf8 COLLATE=utf8_general_ci;
-""","""CREATE TABLE IF NOT EXISTS documentTags (
+""","""CREATE TABLE IF NOT EXISTS document_tags (
   tag int(11) unsigned NOT NULL,
   document int(11) unsigned NOT NULL,
   string_value varchar(255) DEFAULT NULL,

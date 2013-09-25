@@ -3,12 +3,18 @@ import settings
 import index
 
 
-def file_scanners(ndx):
-    ret = []
+class FileScanners(object):
+    def __init__(self, ndex):
+        self.ndex = ndex
+        self.ALL_SCANNERS = (self.music, self.image, self.video)
 
-    tag_set = set()
-    num_tags = {}
-    def r_tags(*tags):
+        # initialize tags
+        tags = ('extension', 'music', ('duration', True), ('bitrate', True),
+                'genre', 'artist', 'album', 'track', 'name', ('width', True),
+                ('height', True), 'image', 'video')
+
+        tag_set = set()
+        num_tags = {}
         for tag in tags:
             if len(tag) > 1:
                 tag_set.add(str(tag[0]))
@@ -16,33 +22,28 @@ def file_scanners(ndx):
             else:
                 tag_set.add(str(tag))
                 num_tags[tag] = False
-    def add_tags():
-        ndx_tags = ndx.get_all_tags()
-        unregd = tag_set.difference(ndx_tags)
-        for tag in unregd:
-            ndx.add_tag(tag, num_tags[tag])
-    r_tags('extension', 'music', ('duration', True), ('bitrate', True),
-           'genre', 'artist', 'album', 'track', 'name', ('width', True),
-           ('height', True), 'image', 'video')
-    add_tags()
 
-    def s_music(f):
+        ndex_tags = self.ndex.get_all_tags()
+        unregd = tag_set.difference(ndex_tags)
+        for tag in unregd:
+            self.ndex.add_tag(tag, num_tags[tag])
+
+    def music(self, f):
         """Detect mp3, flac. Tag them."""
-        doc = ndx.get_document(f)
+        doc = self.ndex.get_document(f)
         if f.lower().endswith('.mp3') or f.lower().endswith('.flac'):
             # tag da metadata!
-            ndx.tag_document(doc, 'music')
+            self.ndex.tag_document(doc, 'music')
             if f.lower().endswith('.mp3'):
-                ndx.tag_document(doc, ('extension', 'mp3'))
+                self.ndex.tag_document(doc, ('extension', 'mp3'))
             else:
-                ndx.tag_document(doc, ('extension', 'flac'))
+                self.ndex.tag_document(doc, ('extension', 'flac'))
 
         elif f.lower().endswith('.m4a'):
             # tag with GET OFF M4A
-            ndx.tag_document(doc, ('extension', 'm4a'))
-    ret.append(s_music)
+            self.ndex.tag_document(doc, ('extension', 'm4a'))
 
-    def s_image(f):
+    def image(self, f):
         """Detect png, jpg, etc. get resolution."""
         flower = f.lower()
         e = None
@@ -62,11 +63,10 @@ def file_scanners(ndx):
             e = 'ico'
 
         if e is not None:
-            doc = ndx.get_document(f)
-            ndx.tag_document(doc, 'image', ('extension', e))
-    ret.append(s_image)
+            doc = self.ndex.get_document(f)
+            self.ndex.tag_document(doc, 'image', ('extension', e))
 
-    def s_video(f):
+    def video(self, f):
         """Detect avi, mov, etc. get length, resoultion, etc."""
         flower = f.lower()
         e = None
@@ -84,14 +84,11 @@ def file_scanners(ndx):
             e = 'avc'
 
         if e is not None:
-            doc = ndx.get_document(f)
-            ndx.tag_document(doc, 'video', ('extension', e))
-    ret.append(s_video)
-
-    return ret
+            doc = self.ndex.get_document(f)
+            self.ndex.tag_document(doc, 'video', ('extension', e))
 
 
-def index_file(ndx, path, scanners, reload_tags=False):
+def index_file(ndex, path, scanners, reload_tags=False):
     """
     Index a file.
     Add any new files to the index and load auto tags.
@@ -103,18 +100,25 @@ def index_file(ndx, path, scanners, reload_tags=False):
 
     Throw exception on index error or io error.
     """
-    stats = os.stat(path)
-    doc = index.Document(path, long(stats.st_mtime), long(stats.st_size))
+    tp = os.path.abspath(path)
 
-    doc_id, new = ndx.add_document(doc)
+    stats = os.stat(tp)
+    doc = index.Document(tp, long(stats.st_mtime), long(stats.st_size))
+
+    doc_id, new = ndex.add_document(doc)
+
+    if new:
+        print("add %s" % (tp,))
+    else:
+        print("update %s" % (tp,))
 
     if new or reload_tags:
         # load the awesome shit
         for func in scanners:
-            func(path)
+            func(tp)
 
 
-def index_directory(ndx, path, scanners, exclude=None, reload_tags=False):
+def index_directory(ndex, path, scanners, exclude=None, reload_tags=False):
     """
     Recursively index a directory.
     Add any new files to the index and load auto tags.
@@ -122,34 +126,39 @@ def index_directory(ndx, path, scanners, exclude=None, reload_tags=False):
 
     index: Index to act on
     path: path of directory to index
-    excludePaths: collection of paths to skip
+    exclude: collection of paths to skip
     reload_tags: load auto tags on existing files?
     
     Throw exception on index error or io error.
     """
+    walk_path = os.path.abspath(path)
+    print("Indexing %s:" % (walk_path,))
 
-    for directory, subdirs, files in os.walk(path):
-        for f in files:
-            tp = os.path.join(directory, f)
-            if exclude is not None and tp not in exclude:
-                print(tp)
-                index_file(ndx, tp, scanners, reload_tags)
+    for directory, subdirs, files in os.walk(walk_path):
+        if exclude is None or directory not in exclude:
+            for f in files:
+                tp = os.path.abspath(os.path.join(directory, f))
+                if exclude is None or tp not in exclude:
+                    index_file(ndex, tp, scanners, reload_tags)
 
 
 if __name__ == '__main__':
-
     cfg = settings.get()
     if cfg is None:
         raise settings.ConfigurationNotFoundException()
 
     with index.Index(cfg['host'], cfg['user'], cfg['passwd'], cfg['db']) as ndx:
-        scanners = file_scanners(ndx)
+        scanners = FileScanners(ndx).ALL_SCANNERS
 
-        nclude = cfg['include'].split('|')
+        ncludes = set()
+        for path in cfg['include'].split('|'):
+            ncludes.add(os.path.abspath(path))
 
         xclude = cfg.get('exclude', None)
+        xcludes = set()
         if xclude is not None:
-            xclude = xclude.split('|')
+            for path in xclude.split('|'):
+                xcludes.add(os.path.abspath(path))
 
-        for path in nclude:
-            index_directory(ndx, path, scanners, exclude=xclude)
+        for path in ncludes:
+            index_directory(ndx, path, scanners, exclude=xcludes)
