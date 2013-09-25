@@ -109,7 +109,7 @@ class Index(object):
                 # must be no docs with path or only this doc
                 if path_doc_id is None or path_doc_id == doc_id:
                     # update db
-                    c.execute('UPDATE documents SET path = %s, modified = FROM_UNIXTIME(%s), size = %s WHERE id = %s',
+                    c.execute('UPDATE documents SET path = %s, modified = %s, size = %s WHERE id = %s',
                              (document.path, long(document.modified), document.size, doc_id))
                 else:
                     raise IndexPathConflictException(document.path, path_doc_id)
@@ -311,8 +311,7 @@ class Index(object):
 
         for tag in tags:
             with self.cursor() as c:
-                str_val = int_val = 'NULL'
-                tag_id = None
+                str_val = int_val = tag_id = None
                 numeric = False
 
                 if isinstance(tag, str):
@@ -323,7 +322,7 @@ class Index(object):
                         int_val = int(tag[1])
                     else:
                         str_val = str(tag[1])
-                edsfg  c.execute("SELECT id, `numeric` FROM tags WHERE name = %s", (tag_name,))
+                c.execute("SELECT id, `numeric` FROM tags WHERE name = %s", (tag_name,))
                 row = c.fetchone()
                 if row is not None:
                     tag_id = int(row[0])

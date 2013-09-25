@@ -1,4 +1,5 @@
 import os
+import sys
 import settings
 import index
 
@@ -108,9 +109,9 @@ def index_file(ndex, path, scanners, reload_tags=False):
     new_doc = ndex.add_document(doc)
 
     if new_doc.new:
-        print("add %s" % (new_doc.path,))
+        sys.stdout.write("\nadd %s\nupdate" % new_doc.path)
     else:
-        print("update %s" % (new_doc.path,))
+        sys.stdout.write('.')
 
     if new_doc.new or reload_tags:
         # load the awesome shit
@@ -132,7 +133,8 @@ def index_directory(ndex, path, scanners, exclude=None, reload_tags=False):
     Throw exception on index error or io error.
     """
     walk_path = os.path.abspath(path)
-    print("Indexing %s:" % (walk_path,))
+    print("\nIndexing %s:" % (walk_path,))
+    sys.stdout.write('update')
 
     for directory, subdirs, files in os.walk(walk_path):
         if exclude is None or directory not in exclude:
@@ -140,6 +142,7 @@ def index_directory(ndex, path, scanners, exclude=None, reload_tags=False):
                 tp = os.path.abspath(os.path.join(directory, f))
                 if exclude is None or tp not in exclude:
                     index_file(ndex, tp, scanners, reload_tags)
+    sys.stdout.write("\n")
 
 
 if __name__ == '__main__':
