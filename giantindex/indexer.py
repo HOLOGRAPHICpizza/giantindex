@@ -2,6 +2,8 @@ import os
 import sys
 import settings
 import index
+import mutagen.easyid3
+import mutagen.flac
 
 
 class FileScanners(object):
@@ -31,14 +33,38 @@ class FileScanners(object):
 
     def music(self, f):
         """Detect mp3, flac. Tag them."""
+
         doc = self.ndex.get_document(f)
         if f.lower().endswith('.mp3') or f.lower().endswith('.flac'):
             # tag da metadata!
             self.ndex.tag_document(doc, 'music')
+
+            tag = None
+            # MP3
             if f.lower().endswith('.mp3'):
                 self.ndex.tag_document(doc, ('extension', 'mp3'))
+                tag = mutagen.easyid3.EasyID3(f)
+
+            # FLAC
             else:
                 self.ndex.tag_document(doc, ('extension', 'flac'))
+                tag = mutagen.flac.FLAC(f)
+
+            if tag is not None:
+
+                def get_tag(tag_name):
+                    """Given a mutagen object, return the named tag."""
+                    if tag_name in tag:
+                        value = str(tag[tag_name])[3:-2]
+                        return tag_name, value
+                    else:
+                        return tag_name, None
+
+                self.ndex.tag_document(
+                    doc,
+                    (get_tag('artist')),
+                    (get_tag('album')),
+                    ('name', tag.get('title', None)))
 
         elif f.lower().endswith('.m4a'):
             # tag with GET OFF M4A
@@ -89,7 +115,7 @@ class FileScanners(object):
             self.ndex.tag_document(doc, 'video', ('extension', e))
 
 
-def index_file(ndex, path, scanners, reload_tags=False):
+def index_file(ndex, path, scanners, last_new=True, reload_tags=False):
     """
     Index a file.
     Add any new files to the index and load auto tags.
@@ -109,14 +135,18 @@ def index_file(ndex, path, scanners, reload_tags=False):
     new_doc = ndex.add_document(doc)
 
     if new_doc.new:
-        sys.stdout.write("\nadd %s\nupdate" % new_doc.path)
+        sys.stdout.write("\nadd %s" % new_doc.path)
     else:
+        if last_new:
+            sys.stdout.write("\nupdate")
         sys.stdout.write('.')
 
     if new_doc.new or reload_tags:
         # load the awesome shit
         for func in scanners:
             func(new_doc.path)
+
+    return new_doc.new is True
 
 
 def index_directory(ndex, path, scanners, exclude=None, reload_tags=False):
@@ -134,14 +164,15 @@ def index_directory(ndex, path, scanners, exclude=None, reload_tags=False):
     """
     walk_path = os.path.abspath(path)
     print("\nIndexing %s:" % (walk_path,))
-    sys.stdout.write('update')
 
+    last_new = False
     for directory, subdirs, files in os.walk(walk_path):
         if exclude is None or directory not in exclude:
             for f in files:
                 tp = os.path.abspath(os.path.join(directory, f))
                 if exclude is None or tp not in exclude:
-                    index_file(ndex, tp, scanners, reload_tags)
+                    last_new = index_file(ndex, tp, scanners, reload_tags, last_new)
+
     sys.stdout.write("\n")
 
 
