@@ -1,6 +1,7 @@
 import os
 import settings
 import index
+import collections
 
 
 class FileScanners(object):
@@ -16,7 +17,7 @@ class FileScanners(object):
         tag_set = set()
         num_tags = {}
         for tag in tags:
-            if len(tag) > 1:
+            if isinstance(tag, collections.Container):
                 tag_set.add(str(tag[0]))
                 num_tags[tag] = tag[1] is True
             else:
