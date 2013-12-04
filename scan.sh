@@ -46,7 +46,7 @@ scandir () {
 	done
 	cat $scratch | parallel
 	
-	touch $lastscan
+#	touch $lastscan
 	rm -f $scratch
 }
 
