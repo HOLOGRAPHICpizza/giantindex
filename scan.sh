@@ -53,6 +53,10 @@ scandir () {
 # scan each included directory
 while read i
 do
+	if [ $2 == "-f" ]
+	then
+		rm -f "$i/.GI2_*"
+	fi
 	scandir $i
 done < include.txt
 
